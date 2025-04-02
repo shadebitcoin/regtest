@@ -509,6 +509,57 @@ services:
       - bitcoin-data:/root/.bitcoin
     profiles: ["btcpay"]
 
+  chopsticks:
+    image: shade-chopsticks
+    container_name: boltz-chopsticks
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        COOKIE=$(cat /root/.bitcoin/regtest/.cookie) && \
+        /app --use-mining --use-faucet --use-logger \
+          --rpc-addr bitcoind:18443 \
+          --rpc-cookie $$COOKIE \
+          --electrs-addr electrs:3002 \
+          --addr 0.0.0.0:3000 \
+          --wallet-name regtest
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+      electrs:
+        condition: service_healthy
+    volumes:
+      - bitcoin-data:/root/.bitcoin
+    ports:
+      - 4000:3000
+    restart: unless-stopped
+    profiles: ["default"]
+
+  chopsticks-liquid:
+    image: shade-chopsticks
+    container_name: boltz-chopsticks-liquid
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        COOKIE=$(cat /root/.elements/elements.cookie) && \
+        /app --use-mining --use-faucet --use-logger \
+          --rpc-addr elementsd:18884 \
+          --rpc-cookie $$COOKIE \
+          --electrs-addr electrs-liquid:3003 \
+          --addr 0.0.0.0:3000 \
+          --chain liquid \
+          --wallet-name regtest
+    depends_on:
+      elementsd:
+        condition: service_healthy
+      electrs-liquid:
+        condition: service_healthy
+    volumes:
+      - elements-data:/root/.elements
+    ports:
+      - 4001:3000
+    restart: unless-stopped
+    profiles: ["default"]
+
 volumes:
   boltz-data:
     name: boltz-backend-data
