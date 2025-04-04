@@ -674,6 +674,26 @@ services:
       - regtest
     profiles: ["default", "ci"]
 
+  websocat-bitcoin:
+    image: solsson/websocat
+    container_name: boltz-websocat-bitcoin
+    network_mode: "host"
+    command: ["-E", "-v", "-b", "ws-l:0.0.0.0:1235", "tcp:127.0.0.1:19001"]
+    depends_on:
+      electrs:
+        condition: service_healthy
+    profiles: ["default", "ci"]
+
+  websocat-liquid:
+    image: solsson/websocat
+    container_name: boltz-websocat-liquid
+    network_mode: "host"
+    command: ["-E", "-v", "-b", "ws-l:0.0.0.0:1236", "tcp:127.0.0.1:19002"]
+    depends_on:
+      electrs-liquid:
+        condition: service_healthy
+    profiles: ["default", "ci"]
+
 volumes:
   boltz-data:
     name: boltz-backend-data
