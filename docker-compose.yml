@@ -91,6 +91,8 @@ services:
     container_name: boltz-cleanup
     entrypoint: ["/bin/bash", "-c", "/cleanup.sh"]
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   postgres:
     hostname: postgres
@@ -112,6 +114,8 @@ services:
       - 5432:5432
     expose:
       - 5432
+    networks:
+      - regtest
 
   boltz-backend:
     hostname: boltz
@@ -139,6 +143,8 @@ services:
       interval: 1s
       start_period: 0s
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   boltz-backend-nginx:
     hostname: boltz-nginx
@@ -159,6 +165,8 @@ services:
       interval: 1s
       start_period: 0s
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   boltz-web-app:
     hostname: web-app
@@ -171,6 +179,8 @@ services:
     ports:
       - 8080:80
     profiles: ["default"]
+    networks:
+      - regtest
 
   boltz-client:
     hostname: boltz-client
@@ -194,6 +204,8 @@ services:
       - elements-data:/root/.elements
       - boltz-client-data:/root/.boltz
     profiles: ["default"]
+    networks:
+      - regtest
 
   anvil:
     hostname: anvil
@@ -210,6 +222,8 @@ services:
       interval: 1s
       start_period: 0s
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   rif-relay:
     hostname: rif-relay
@@ -227,6 +241,8 @@ services:
     ports:
       - 8090:8090
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   bitcoind:
     container_name: boltz-bitcoind
@@ -269,6 +285,8 @@ services:
       interval: 1s
       start_period: 0s
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   elementsd:
     container_name: boltz-elementsd
@@ -293,6 +311,8 @@ services:
       interval: 1s
       start_period: 0s
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   cln-1:
     container_name: boltz-cln-1
@@ -304,6 +324,8 @@ services:
     volumes:
       - cln1-data:/root/.lightning
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   cln-2:
     container_name: boltz-cln-2
@@ -316,6 +338,8 @@ services:
     volumes:
       - cln2-data:/root/.lightning
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   lnd-1:
     <<: *base-lnd
@@ -327,6 +351,8 @@ services:
     volumes:
       - lnd1-data:/root/.lnd/
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   lnd-2:
     <<: *base-lnd
@@ -337,6 +363,8 @@ services:
     volumes:
       - lnd2-data:/root/.lnd/
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   bitcoind-init:
     <<: *base-scripts
@@ -347,6 +375,8 @@ services:
     depends_on:
       - bitcoind
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   regtest-start:
     <<: *base-scripts
@@ -372,6 +402,8 @@ services:
       rif-relay:
         condition: service_healthy
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   scripts:
     <<: *base-scripts
@@ -381,6 +413,8 @@ services:
       boltz-backend:
         condition: service_healthy
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   electrs:
     hostname: electrs-bitcoin
@@ -413,6 +447,8 @@ services:
     volumes:
       - bitcoin-data:/root/.bitcoin
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   electrs-liquid:
     hostname: electrs-liquid
@@ -451,6 +487,8 @@ services:
     volumes:
       - elements-data:/root/.elements
     profiles: ["default", "ci"]
+    networks:
+      - regtest
 
   esplora:
     hostname: esplora
@@ -466,6 +504,8 @@ services:
       - 4002:4002
       - 4003:4003
     profiles: ["default"]
+    networks:
+      - regtest
 
   otterscan:
     hostname: otterscan
@@ -480,6 +520,8 @@ services:
     ports:
       - 5100:80
     profiles: ["default"]
+    networks:
+      - regtest
 
   nbxplorer:
     container_name: boltz-nbxplorer
@@ -508,6 +550,8 @@ services:
     volumes:
       - bitcoin-data:/root/.bitcoin
     profiles: ["btcpay"]
+    networks:
+      - regtest
 
   chopsticks:
     image: shade-chopsticks
@@ -533,6 +577,8 @@ services:
       - 4000:3000
     restart: unless-stopped
     profiles: ["default"]
+    networks:
+      - regtest
 
   chopsticks-liquid:
     image: shade-chopsticks
@@ -559,6 +605,74 @@ services:
       - 4001:3000
     restart: unless-stopped
     profiles: ["default"]
+    networks:
+      - regtest
+
+  zookeeper:
+    container_name: zookeeper
+    image: wurstmeister/zookeeper
+    platform: linux/amd64
+    ports:
+      - "2181:2181"
+    networks:
+      - regtest
+    profiles: ["default", "ci"]
+
+  kafka:
+    container_name: kafka
+    image: wurstmeister/kafka
+    platform: linux/arm64/v8
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    networks:
+      - regtest
+    profiles: ["default", "ci"]
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c 'echo > /dev/tcp/127.0.0.1/9092'"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  covclaim:
+    image: shade/covclaim
+    container_name: covclaim
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elementsd:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      - RUST_LOG=trace,hyper=info,tracing=info,reqwest=info
+      - DATABASE_URL=postgresql://boltz:boltz@postgres:5432/covclaim?sslmode=disable
+      - SWEEP_TIME=0
+      - SWEEP_INTERVAL=30
+      - NETWORK=regtest
+      - API_HOST=0.0.0.0
+      - API_PORT=1234
+      - CHAIN_BACKEND=elements
+      - ELEMENTS_HOST=elementsd
+      - ELEMENTS_PORT=18884
+      - ELEMENTS_USER=regtest
+      - ELEMENTS_PASSWORD=regtest
+      - ESPLORA_ENDPOINT=http://esplora:4003
+      - ESPLORA_POLL_INTERVAL=3
+      - ESPLORA_MAX_REQUESTS_PER_SECOND=0
+      - BOLTZ_ENDPOINT=http://boltz-backend-nginx:9001/v2
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_TOPIC=covenant_claims
+    ports:
+      - "1234:1234"
+    networks:
+      - regtest
+    profiles: ["default", "ci"]
 
 volumes:
   boltz-data:
@@ -624,3 +738,7 @@ volumes:
       type: none
       o: bind
       device: ./data/backend-nginx/
+
+networks:
+  regtest:
+    driver: bridge
