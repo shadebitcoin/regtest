@@ -704,22 +704,36 @@ services:
   websocat-bitcoin:
     image: solsson/websocat
     container_name: boltz-websocat-bitcoin
-    network_mode: "host"
-    command: ["-E", "-v", "-b", "ws-l:0.0.0.0:1235", "tcp:127.0.0.1:19001"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ELECTRS_IP=$$(getent hosts electrs-bitcoin | awk '{ print $$1 }') && \
+        /usr/local/bin/websocat -E -v -b ws-l:0.0.0.0:1235 tcp:$$ELECTRS_IP:19001
     depends_on:
       electrs:
         condition: service_healthy
     profiles: ["default", "ci"]
+    networks:
+      - regtest
+    ports:
+      - "1235:1235"
 
   websocat-liquid:
     image: solsson/websocat
     container_name: boltz-websocat-liquid
-    network_mode: "host"
-    command: ["-E", "-v", "-b", "ws-l:0.0.0.0:1236", "tcp:127.0.0.1:19002"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ELECTRS_IP=$$(getent hosts electrs-liquid | awk '{ print $$1 }') && \
+        /usr/local/bin/websocat -E -v -b ws-l:0.0.0.0:1236 tcp:$$ELECTRS_IP:19002
     depends_on:
       electrs-liquid:
         condition: service_healthy
     profiles: ["default", "ci"]
+    networks:
+      - regtest
+    ports:
+      - "1236:1236"
 
 volumes:
   boltz-data:
