@@ -18,4 +18,8 @@ data/bitcoind/*
 !data/bitcoind/.gitkeep
 data/boltz-client/*
 !data/boltz-client/boltz.toml
+data/postgres/*
+!data/postgres/.gitkeep
+data/postgres-covclaim/*
+!data/postgres-covclaim/.gitkeep
 docker-compose.override.yml
